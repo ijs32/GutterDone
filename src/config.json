@@ -1,0 +1,22 @@
+{
+    "INLET": 0,
+    "STREET": 1,
+    "STATION": 2,
+    "ON-GRADE/SAG": 3,
+    "ACRES": 4,
+    "CN": 5,
+    "10YR_RAIN": 6,
+    "Q": 7,
+    "CARRYOVER_Q": 8,
+    "TOTAL_Q": 9,
+    "LONG": 10,
+    "CROSS": 11,
+    "GUTTER": 12,
+    "TYPE": 13,
+    "THROAT": 14,
+    "INTERCEPTED_FLOW": 15,
+    "SPREAD": 16,
+    "DEPTH": 17,
+    "Q_BYPASS": 18,
+    "TO_INLET": 19
+}
