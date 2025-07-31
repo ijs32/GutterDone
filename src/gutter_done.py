@@ -117,10 +117,12 @@ def prepare_express(folder):
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/FILE.PNG"))))
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/SAVE_AS.PNG"))))
 
+    time.sleep(0.5)
     pg.write("init_file", interval=0.01)
     time.sleep(0.5)
 
-    pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/FOLDER_PATH.PNG"))))
+    fp_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/FOLDER_PATH.PNG")), 11/10, 1/2)
+    pg.click(*fp_coords)
 
     pg.write(folder, interval=0.01)
     pg.press("enter")
@@ -129,7 +131,9 @@ def prepare_express(folder):
     pg.press("enter")
 
 
-def input_values(throat, slope, total_q, inlet):
+def input_values(start_row, throat, slope, total_q, inlet):
+    logger.info(f"INPUTTING VALUES FOR ROW {start_row}: THROAT={throat}, SLOPE={slope}, TOTAL_Q={total_q}, INLET={inlet}")
+
     exn_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/EXPRESS_NAME.PNG")), 1/4, 1/2)
     pg.click(*exn_coords) # EXPRESS_NAME.PNG
     pg.hotkey("ctrl", "a")
@@ -179,7 +183,7 @@ def save_pdf(inlet: str):
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/REPORT.PNG"))))
 
     if WINDOWS_VER == 11:
-        wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_SCREEN.PNG"))
+        wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_SCREEN.PNG"), 0.7)
         
         pg.press("enter")
         pg.write("Microsoft Print to PDF", interval=0.01)
@@ -284,8 +288,17 @@ def iter_xl(ws: Worksheet, folder, start_row: int):
         q: float      = q_cell.value
         long: float   = long_cell.value
 
+        if None in {inlet, long, throat, q}:
+            prev_carryover_q = 0
+            prev_to_inlet = ""
+
+            start_row += 1
+            continue
+
         if type == "Sag":
             input_sag(row, prev_carryover_q)
+
+            start_row += 1
             continue
 
         if prev_to_inlet == inlet:
@@ -294,7 +307,13 @@ def iter_xl(ws: Worksheet, folder, start_row: int):
             total_q = q
 
         long_percent = long * 100
-        input_values(throat, long_percent, total_q, inlet)
+        input_values(
+            start_row,
+            throat,
+            long_percent,
+            total_q,
+            inlet
+        )
         run_express(inlet)
 
         df_express = read_csv(folder, inlet)
@@ -302,6 +321,8 @@ def iter_xl(ws: Worksheet, folder, start_row: int):
 
         prev_carryover_q = float(df_express.at[0, "Q"])
         prev_to_inlet    = to_inlet
+
+        start_row += 1
 
 
 def mkdirs(folder):
@@ -384,16 +405,24 @@ if __name__ == "__main__":
         path = Path(folder) / f"GUTTER_SPREAD_EXCEL - {formatted_datetime}.xlsx"
         wb.save(path)
 
-        logger.info("GutterDone finished successfully.")
+        try:
+            os.remove(Path(folder) / "init_file.hxp")
+        except FileNotFoundError as e:
+            logger.error("Failed to delete init_file.hxp:")
+            logger.exception(e)
 
-    except FileNotFoundError as e:
-        logger.error("GutterDone failed:")
-        logger.exception(e)
+        logger.info("GutterDone finished successfully.")
 
     except Exception as e:
         logger.error("GutterDone failed:")
         logger.exception(e)
-        
+
+        try:
+            os.remove(Path(folder) / "init_file.hxp")
+        except FileNotFoundError as e:
+            logger.error("Failed to delete init_file.hxp:")
+            logger.exception(e)
+
         path = Path(folder) / f"FAILED_GUTTER_SPREAD_EXCEL - {formatted_datetime}.xlsx"
         wb.save(path)
 
