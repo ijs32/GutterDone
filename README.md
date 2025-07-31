@@ -25,5 +25,5 @@ If GutterDone fails, it will still output a failed Excel, you can restart the pr
 
 #### Command to create .exe
 ```
-pyinstaller --onefile --windowed --icon=src/logo.ico --name="GutterDone" --add-data "src/logo.png;." --add-data "src/config.json;." --add-data "src/images;images" src/gutter_done.py
+pyinstaller --onefile --windowed --icon=src/icon.ico --name="GutterDone" --add-data "src/logo.png;." --add-data "src/config.json;." --add-data "src/images;images" src/gutter_done.py
 ```

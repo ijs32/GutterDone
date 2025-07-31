@@ -419,10 +419,11 @@ if __name__ == "__main__":
 
         try:
             os.remove(Path(folder) / "init_file.hxp")
-        except FileNotFoundError as e:
-            logger.error("Failed to delete init_file.hxp:")
-            logger.exception(e)
+            
+            path = Path(folder) / f"FAILED_GUTTER_SPREAD_EXCEL - {formatted_datetime}.xlsx"
+            wb.save(path)
 
-        path = Path(folder) / f"FAILED_GUTTER_SPREAD_EXCEL - {formatted_datetime}.xlsx"
-        wb.save(path)
+        except Exception as e:
+            logger.error("Failed to save failed excel copy:")
+            logger.exception(e)
 
