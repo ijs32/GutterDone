@@ -1,4 +1,4 @@
-import os, time, sys, json, shutil, traceback, logging
+import os, time, sys, json, shutil, logging
 import pyautogui as pg
 import tkinter as tk
 import openpyxl as xl
@@ -118,13 +118,13 @@ def prepare_express(folder):
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/SAVE_AS.PNG"))))
 
     time.sleep(0.5)
-    pg.write("init_file", interval=0.01)
+    pg.write("init_file", interval=0.05)
     time.sleep(0.5)
 
     fp_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/FOLDER_PATH.PNG")), 11/10, 1/2)
     pg.click(*fp_coords)
 
-    pg.write(folder, interval=0.01)
+    pg.write(folder, interval=0.05)
     pg.press("enter")
 
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/SAVE_FILE.PNG"))))
@@ -138,19 +138,19 @@ def input_values(start_row, throat, slope, total_q, inlet):
     pg.click(*exn_coords) # EXPRESS_NAME.PNG
     pg.hotkey("ctrl", "a")
     pg.press("backspace")
-    pg.write(inlet, interval=0.01)
+    pg.write(inlet, interval=0.05)
 
-    sl_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/THROAT.PNG")), 4/3, 1/2)
+    sl_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/THROAT.PNG")), 4/3, 1/6)
     pg.click(*sl_coords)
-    pg.write(str(throat), interval=0.01)
+    pg.write(str(throat), interval=0.05)
 
     sl_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/SLOPE.PNG")), 7/8, 1/2)
     pg.click(*sl_coords)
-    pg.write(str(slope), interval=0.01)
+    pg.write(str(slope), interval=0.05)
 
     q_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/Q.PNG")), 7/8, 3/4)
     pg.click(*q_coords)
-    pg.write(str(total_q), interval=0.01)
+    pg.write(str(total_q), interval=0.05)
 
 
 def run_express(inlet: str):
@@ -171,7 +171,7 @@ def save_hxp(inlet: str):
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/SAVE_AS.PNG"))))
     time.sleep(2)
 
-    pg.write(inlet, interval=0.01)
+    pg.write(inlet + ".hxp", interval=0.05)
     time.sleep(0.5)
 
     pg.press("enter")
@@ -186,14 +186,14 @@ def save_pdf(inlet: str):
         wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_SCREEN.PNG"), 0.7)
         
         pg.press("enter")
-        pg.write("Microsoft Print to PDF", interval=0.01)
+        pg.write("Microsoft Print to PDF", interval=0.05)
         pg.press("enter")
 
         pb_coords = get_coords(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_IN_PRINT_SCREEN.PNG")), 1/4, 1/2)
         pg.click(*pb_coords)
 
         wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_FILE_EXPLORER.PNG"))
-        pg.write(inlet, interval=0.01)
+        pg.write(inlet + ".pdf", interval=0.05)
 
         time.sleep(0.5)
         pg.press("enter")
@@ -203,11 +203,11 @@ def save_pdf(inlet: str):
 
     if WINDOWS_VER == 10:
         wait_for(get_resource_path(f"images/{WINDOWS_PATH}/PRINT_SCREEN.PNG"))
-        pg.write("Microsoft Print to PDF", interval=0.01)
+        pg.write("Microsoft Print to PDF", interval=0.05)
         pg.press("enter")
 
         time.sleep(0.5)
-        pg.write(inlet, interval=0.01)
+        pg.write(inlet + ".pdf", interval=0.05)
 
         time.sleep(0.5)
         pg.press("enter", 2, 1)
@@ -222,7 +222,7 @@ def save_csv(inlet: str):
     pg.click(pg.center(wait_for(get_resource_path(f"images/{WINDOWS_PATH}/CSV.PNG"))))
 
     wait_for(get_resource_path(f"images/{WINDOWS_PATH}/CSV_FILE_EXPLORER.PNG"))
-    pg.write(inlet.strip() + ".csv", interval=0.01)
+    pg.write(inlet.strip() + ".csv", interval=0.05)
     time.sleep(0.5)
 
     pg.press("enter")
@@ -272,6 +272,7 @@ def edit_xl(row: Tuple[Cell, ...], df_express: pd.DataFrame, prev_carryover_q: f
 def iter_xl(ws: Worksheet, folder, start_row: int):
     prev_carryover_q = 0
     prev_to_inlet = ""
+    invalid_inlets = ["LOCATION", "INLET #"]
 
     for row in ws.iter_rows(min_row=start_row):
         inlet_cell    = row[XL_INDEX["INLET"]]
@@ -288,7 +289,7 @@ def iter_xl(ws: Worksheet, folder, start_row: int):
         q: float      = q_cell.value
         long: float   = long_cell.value
 
-        if None in {inlet, long, throat, q}:
+        if None in {inlet, long, throat, q} or inlet in invalid_inlets:
             prev_carryover_q = 0
             prev_to_inlet = ""
 
@@ -360,7 +361,7 @@ if __name__ == "__main__":
     root.withdraw()
 
     now = datetime.now()
-    formatted_datetime = now.strftime("%Y-%m-%d %H-%M-%S")
+    formatted_datetime = now.strftime("%m-%d-%Y %H-%M-%S")
 
     logger = get_logger()
 
@@ -399,8 +400,6 @@ if __name__ == "__main__":
         ws = wb.worksheets[0]
 
         iter_xl(ws, folder, start_row)
-        mkdirs(folder)
-        move_files(folder)
 
         path = Path(folder) / f"GUTTER_SPREAD_EXCEL - {formatted_datetime}.xlsx"
         wb.save(path)
@@ -408,10 +407,16 @@ if __name__ == "__main__":
         try:
             os.remove(Path(folder) / "init_file.hxp")
         except FileNotFoundError as e:
+            messagebox.showerror("Error", "Oopsie!")
+
             logger.error("Failed to delete init_file.hxp:")
             logger.exception(e)
 
+        mkdirs(folder)
+        move_files(folder)
+
         logger.info("GutterDone finished successfully.")
+        messagebox.showinfo("Success", "Gutter Done finishes successfully.")
 
     except Exception as e:
         logger.error("GutterDone failed:")
@@ -426,4 +431,7 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error("Failed to save failed excel copy:")
             logger.exception(e)
+        
+        messagebox.showerror("Error", "Oopsie!")
+        
 
